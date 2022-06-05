@@ -12,17 +12,7 @@ main :: () {
 
     ping := get_ping(destination);
 
-    pingcolor := ifx ping <= -1 then ConsoleColor.RED_BG
-            else ifx ping <= 12 then ConsoleColor.B_CYAN
-            else ifx ping <= 24 then ConsoleColor.CYAN
-            else ifx ping <= 36 then ConsoleColor.B_GREEN
-            else ifx ping <= 48 then ConsoleColor.GREEN
-            else ifx ping <= 60 then ConsoleColor.B_YELLOW
-            else ifx ping <= 72 then ConsoleColor.YELLOW
-            else ifx ping <= 84 then ConsoleColor.B_RED
-            else                     ConsoleColor.RED
-
-    print( tprint(color=pingcolor, "% ", ping) );
+    print( tprint(color=get_ping_color(ping), "% ", ping) );
 
     sleep_milliseconds(1000);
 
@@ -44,22 +34,38 @@ get_ping :: (destination: string) -> int {
   return val;
 }
 
-// with console colors!
-ConsoleColor :: enum {NONE; BLACK; GRAY; RED; B_RED; GREEN; B_GREEN; YELLOW; B_YELLOW; CYAN; B_CYAN; RED_BG;};
+get_ping_color :: (ping: int) -> ConsoleColor {
+  if ping <= -1 return ConsoleColor.RED_BG;
+  if ping <= 12 return ConsoleColor.B_CYAN;
+  if ping <= 24 return ConsoleColor.CYAN;
+  if ping <= 36 return ConsoleColor.B_GREEN;
+  if ping <= 48 return ConsoleColor.GREEN;
+  if ping <= 60 return ConsoleColor.B_YELLOW;
+  if ping <= 72 return ConsoleColor.YELLOW;
+  if ping <= 84 return ConsoleColor.B_RED;
+                return ConsoleColor.RED;
+}
+
+color_to_escapecode :: (color: ConsoleColor) -> string {
+  if color == {
+    case .RED;      return "\u001b[31m";
+    case .B_RED;    return "\u001b[31;1m";
+    case .GREEN;    return "\u001b[32m";
+    case .B_GREEN;  return "\u001b[32;1m";
+    case .YELLOW;   return "\u001b[33m";
+    case .B_YELLOW; return "\u001b[33;1m";
+    case .CYAN;     return "\u001b[36m";
+    case .B_CYAN;   return "\u001b[36;1m";
+    case .RED_BG;   return "\u001b[41;1m";
+    case;           return "";
+  }
+}
+
+// tprint with console colors!
+ConsoleColor :: enum {NONE; RED; B_RED; GREEN; B_GREEN; YELLOW; B_YELLOW; CYAN; B_CYAN; RED_BG;};
 tprint :: (color: ConsoleColor, format_string: string, args: .. Any) -> string {
   str := tprint(format_string, .. args);
-  colorcode := ifx color == .GRAY     then "\u001b[38;5;8m";
-          else ifx color == .BLACK    then "\u001b[30m";
-          else ifx color == .RED      then "\u001b[31m";
-          else ifx color == .B_RED    then "\u001b[31;1m";
-          else ifx color == .GREEN    then "\u001b[32m";
-          else ifx color == .B_GREEN  then "\u001b[32;1m";
-          else ifx color == .YELLOW   then "\u001b[33m";
-          else ifx color == .B_YELLOW then "\u001b[33;1m";
-          else ifx color == .CYAN     then "\u001b[36m";
-          else ifx color == .B_CYAN   then "\u001b[36;1m";
-          else ifx color == .RED_BG   then "\u001b[41;1m";
-  return tprint("%+%\u001b[0m", colorcode, str);
+  return tprint("%+%\u001b[0m", color_to_escapecode(color), str);
 }
 
 
