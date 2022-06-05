@@ -1,0 +1,5 @@
+.build/
+ignore*
+*.pdb
+*.exe
+*.dll
