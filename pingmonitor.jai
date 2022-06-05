@@ -21,7 +21,8 @@ main :: () {
 }
 
 
-// @windows - linux ping command is probably different and breaks
+// @windows: linux ping command is probably different and breaks
+// @perf: spawns a new process every second ... doesn't let your cpu sleep
 get_ping :: (destination: string) -> int {
   #import "Process";
   #import "String";
