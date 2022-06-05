@@ -1,3 +1,3 @@
 # pingman
 
-![](https://i.imgur.com/zQxUout.png)
+![](https://i.imgur.com/erT0ADC.png)
