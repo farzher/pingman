@@ -4,7 +4,9 @@
 main :: () {
   enable_ansi_escape_codes();
 
-  destination := cmd_arg(1, default="google.com");
+  // default destination is our own public ip address
+  destination := cmd_arg(1, default="");
+  if !destination destination = request("https://farzher.com/myip");
   print("pinging %\n", destination);
 
   while 1 {
@@ -117,4 +119,31 @@ enable_ansi_escape_codes :: () {
     Win.GetConsoleMode(hand, *mode);
     Win.SetConsoleMode(hand, mode | Win.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
   }
+}
+
+#import "Curl";
+// Allocates response_body using context.allocator
+request :: (url: string) -> response_body: string {
+    curl := curl_easy_init();
+    defer curl_easy_cleanup(curl);
+
+    curl_easy_setopt(curl, .URL, temp_c_string(url));
+
+    builder: String_Builder;
+    curl_easy_setopt(curl, .WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, .WRITEDATA,     *builder);
+
+    curl_easy_perform(curl);
+
+    return builder_to_string(*builder);
+
+    size_t :: u64;
+    write_callback :: (ptr: *u8, size: size_t, nmemb: size_t, userdata: *void) -> size_t #c_call {
+        builder := cast(*String_Builder)userdata;
+        jai_context: Context;
+        push_context jai_context {
+            append(builder, ptr, xx nmemb);
+        }
+        return nmemb;
+    }
 }
