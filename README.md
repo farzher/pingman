@@ -1,3 +1,3 @@
 # pingmonitor
 
-![](https://i.imgur.com/9w9NSEG.png)
+![](https://i.imgur.com/pejnSlK.png)
