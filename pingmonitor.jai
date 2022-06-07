@@ -6,8 +6,12 @@ main :: () {
 
   // default destination is our own public ip address
   destination := cmd_arg(1, default="");
-  if !destination destination = request("https://farzher.com/myip");
-  print("pinging %\n", destination);
+  if !destination {
+    destination = request("https://farzher.com/myip");
+    print("pinging: your own IP address\n");
+  } else {
+    print("pinging: %\n", destination);
+  }
 
   while 1 {
     push_temp();
