@@ -33,7 +33,11 @@ get_ping :: (destination: string) -> int {
     capture_and_return_output=true
   );
   index := find_index_from_left(output_string, "time=");
-  if index == -1 return -1;
+  if index == -1 {
+    index = find_index_from_left(output_string, "time<1ms");
+    if index == -1 return -1;
+    return 0;
+  }
   pingstr := substr(output_string, index+"time=".count, count=4);
   val, success := parse_int(*pingstr);
   if !success return -1;
