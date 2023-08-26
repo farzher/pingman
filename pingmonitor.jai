@@ -7,7 +7,8 @@ main :: () {
   destination := cmd_arg(1, default="1.1.1.1");
   mylog("pinging:", destination);
 
-  sleep_ms := cmd_val("sleepms", 1000);
+  sleep_ms := cmd_arg("sleepms", 1000);
+  if cmd_arg("nosleep", default=0) sleep_ms = 0;
 
   while 1 {
     context.allocator = temp;
@@ -115,25 +116,31 @@ substr :: inline (str: string, index: int, count: int = 0) -> string #must {
   return c;
 }
 
+// return the positional argument at index
+// skips over / ignores non-positional arguments ex: -nosleep
 cmd_arg :: (index: int, default: string = "") -> string {
-  // skips over / ignores cmd_val arguments ex: sleepms=0
-  // if an actual argument, including the exe name includes a equals sign =, this doesn't work correctly
   args_i_care_about: [..]string;
   args_i_care_about.allocator = temp;
-  for arg: get_command_line_arguments() {
-    contains_equals := find_index_from_left(arg, "=") != -1;
-    if !contains_equals array_add(*args_i_care_about, arg);
+  for arg, i: get_command_line_arguments() {
+    // the first arg, the exe name, is always allowed, even if it starts with a -
+    if i > 0 {
+      begins_with_dash := find_index_from_left(arg, "-") == 0;
+      if begins_with_dash continue;
+    }
+    array_add(*args_i_care_about, arg);
   }
 
   if index >= args_i_care_about.count return default;
   return args_i_care_about[index];
 }
 
-cmd_val :: (varname: string, default: int = 0) -> int {
+// return the value of a named argument ex: -sleepms=0
+cmd_arg :: (varname: string, default: int = 0) -> int {
   #import "String";
   for arg: get_command_line_arguments() {
-    if begins_with(arg, tprint("%=", varname)) {
-      valstr := substr(arg, varname.count+1);
+    if arg == tprint("-%", varname) return 1;
+    if begins_with(arg, tprint("-%=", varname)) {
+      valstr := substr(arg, 1+varname.count+1);
       return parse_int(*valstr);
     }
   }
