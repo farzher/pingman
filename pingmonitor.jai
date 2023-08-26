@@ -4,48 +4,55 @@
 main :: () {
   enable_ansi_escape_codes();
 
-  // default destination is our own public ip address
-  destination := cmd_arg(1, default="");
-  if !destination {
-    destination = request("https://farzher.com/myip");
-    print("pinging: your own IP address\n");
-  } else {
-    print("pinging: %\n", destination);
-  }
+  destination := cmd_arg(1, default="1.1.1.1");
+  mylog("pinging:", destination);
+
+  sleep_ms := cmd_val("sleepms", 1000);
 
   while 1 {
-    push_temp();
+    context.allocator = temp;
 
     ping := get_ping(destination);
+    ping_with_color := tprint(color=get_ping_color(ping), "%", ping);
+    print("% ", ping_with_color);
 
-    print( tprint(color=get_ping_color(ping), "% ", ping) );
-
-    sleep_milliseconds(1000);
+    sleep_milliseconds(xx sleep_ms);
 
     tfree();
   }
 }
 
 
-// @windows: linux ping command is probably different and breaks
+// @windows-only: linux ping command is probably different and doesn't work
 // @perf: spawns a new process every second ...
 get_ping :: (destination: string) -> int {
   #import "Process";
   #import "String";
-  successfully_launched, exit_code, output_string := os_run_command(
-    ..break_command_into_strings(tprint("ping % -n 1", destination)),
-    capture_and_return_output=true
-  );
+
+  // run the ping command
+  output_string := run_cmd(tprint("ping % -n 1", destination));
+
+  // look for time=
   index := find_index_from_left(output_string, "time=");
+
+  // if we can't find it, our ping was either <1ms (very fast) or a timeout (very slow)
   if index == -1 {
     index = find_index_from_left(output_string, "time<1ms");
     if index == -1 return -1;
     return 0;
   }
+
+  // examples of what's at the index: time=3ms, time=1063ms
+  // examples of pingstr: 3ms, 1063ms
   pingstr := substr(output_string, index+"time=".count, count=4);
   val, success := parse_int(*pingstr);
   if !success return -1;
   return val;
+}
+
+run_cmd :: (cmd: string) -> string {
+  successfully_launched, output_string := run_command(..break_command_into_strings(cmd), capture_and_return_output=true);
+  return output_string;
 }
 
 get_ping_color :: (ping: int) -> ConsoleColor {
@@ -79,7 +86,7 @@ color_to_escapecode :: (color: ConsoleColor) -> string {
 ConsoleColor :: enum {NONE; RED; B_RED; GREEN; B_GREEN; YELLOW; B_YELLOW; CYAN; B_CYAN; RED_BG;};
 tprint :: (color: ConsoleColor, format_string: string, args: .. Any) -> string {
   str := tprint(format_string, .. args);
-  return tprint("%+%\u001b[0m", color_to_escapecode(color), str);
+  return tprint("%0%0\u001b[0m", color_to_escapecode(color), str);
 }
 
 
@@ -94,14 +101,9 @@ tprint :: (color: ConsoleColor, format_string: string, args: .. Any) -> string {
 
 // generic modules:
 
-#import "Math";
 #import "Basic";
+mylog :: (args: ..Any) {for args print("% ", it); print("\n"); }
 
-push_temp :: () #expand {
-  old_allocator           := context.allocator;
-  `defer context.allocator = old_allocator;
-  context.allocator        = temp;
-};
 tfree :: reset_temporary_storage;
 
 substr :: inline (str: string, index: int, count: int = 0) -> string #must {
@@ -114,9 +116,28 @@ substr :: inline (str: string, index: int, count: int = 0) -> string #must {
 }
 
 cmd_arg :: (index: int, default: string = "") -> string {
-  args := get_command_line_arguments();
-  if index >= args.count return default;
-  return args[index];
+  // skips over / ignores cmd_val arguments ex: sleepms=0
+  // if an actual argument, including the exe name includes a equals sign =, this doesn't work correctly
+  args_i_care_about: [..]string;
+  args_i_care_about.allocator = temp;
+  for arg: get_command_line_arguments() {
+    contains_equals := find_index_from_left(arg, "=") != -1;
+    if !contains_equals array_add(*args_i_care_about, arg);
+  }
+
+  if index >= args_i_care_about.count return default;
+  return args_i_care_about[index];
+}
+
+cmd_val :: (varname: string, default: int = 0) -> int {
+  #import "String";
+  for arg: get_command_line_arguments() {
+    if begins_with(arg, tprint("%=", varname)) {
+      valstr := substr(arg, varname.count+1);
+      return parse_int(*valstr);
+    }
+  }
+  return default;
 }
 
 enable_ansi_escape_codes :: () {
@@ -127,31 +148,4 @@ enable_ansi_escape_codes :: () {
     Win.GetConsoleMode(hand, *mode);
     Win.SetConsoleMode(hand, mode | Win.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
   }
-}
-
-#import "Curl";
-// Allocates response_body using context.allocator
-request :: (url: string) -> response_body: string {
-    curl := curl_easy_init();
-    defer curl_easy_cleanup(curl);
-
-    curl_easy_setopt(curl, .URL, temp_c_string(url));
-
-    builder: String_Builder;
-    curl_easy_setopt(curl, .WRITEFUNCTION, write_callback);
-    curl_easy_setopt(curl, .WRITEDATA,     *builder);
-
-    curl_easy_perform(curl);
-
-    return builder_to_string(*builder);
-
-    size_t :: u64;
-    write_callback :: (ptr: *u8, size: size_t, nmemb: size_t, userdata: *void) -> size_t #c_call {
-        builder := cast(*String_Builder)userdata;
-        jai_context: Context;
-        push_context jai_context {
-            append(builder, ptr, xx nmemb);
-        }
-        return nmemb;
-    }
 }
