@@ -1,5 +1,7 @@
 # pingmonitor
 
+Unstable internet? Use this to monitor your ping over time.
+
 ![](https://i.imgur.com/pejnSlK.png)
 
 ## Download exe
