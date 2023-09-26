@@ -31,7 +31,9 @@ get_ping :: (destination: string) -> int {
   #import "String";
 
   // run the ping command
-  output_string := run_cmd(tprint("ping % -n 1", destination));
+  // -n is the count of pings to send
+  // -w is the timeout in ms
+  output_string := run_cmd(tprint("ping % -n 1 -w 1000", destination));
 
   // look for time=
   index := find_index_from_left(output_string, "time=");
