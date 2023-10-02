@@ -7,8 +7,7 @@ main :: () {
   destination := cmd_arg(1, default="1.1.1.1");
   mylog("pinging:", destination);
 
-  sleep_ms := cmd_arg("sleepms", 1000);
-  if cmd_arg("nosleep", default=0) sleep_ms = 0;
+  sleep_ms := cmd_arg("sleepms", 0);
 
   while 1 {
     context.allocator = temp;
@@ -119,7 +118,7 @@ substr :: inline (str: string, index: int, count: int = 0) -> string #must {
 }
 
 // return the positional argument at index
-// skips over / ignores non-positional arguments ex: -nosleep
+// skips over / ignores non-positional arguments ex: -sleepms
 cmd_arg :: (index: int, default: string = "") -> string {
   args_i_care_about: [..]string;
   args_i_care_about.allocator = temp;
